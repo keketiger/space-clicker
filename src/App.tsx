@@ -1,33 +1,62 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import reactLogo from './assets/react.svg'
-import viteLogo from '/vite.svg'
 import './App.css'
 
 function App() {
   const [count, setCount] = useState(0)
+  const [isShrinking, setIsShrinking] = useState(false)
+  const [clicksPerSecond, setClicksPerSecond] = useState(0)
+  const clickCountRef = useRef(0)
+  const lastCLickTimeRef = useRef(Date.now())
+
+  useEffect(() => {
+    const calculateClicksPerSecond = () => {
+      const now = Date.now()
+      const timeElapsed = (now - lastCLickTimeRef.current) / 1000
+
+      if (timeElapsed > 0) {
+        setClicksPerSecond(clickCountRef.current / timeElapsed)
+      }
+
+      lastCLickTimeRef.current = now
+      clickCountRef.current = 0
+    }
+
+    const interval = setInterval(calculateClicksPerSecond, 1000)
+
+    return () => clearInterval(interval);
+  }, [])
+
+  const handleLogoClick = () => {
+    const now = Date.now()
+    clickCountRef.current += 1
+    setCount((count) => count + 1)
+    setIsShrinking(true)
+
+    setTimeout(() => {
+      setIsShrinking(false)
+    }, 150)
+  }
 
   return (
     <>
-      <div>
-        <a href="https://vitejs.dev" target="_blank">
-          <img src={viteLogo} className="logo" alt="Vite logo" />
-        </a>
-        <a href="https://react.dev" target="_blank">
-          <img src={reactLogo} className="logo react" alt="React logo" />
-        </a>
+      <div className='container'>
+        <div className='space-container'>
+          <div className='space-clicker-render'>
+            <img
+              src={reactLogo}
+              className={`logo react ${isShrinking ? 'shrink' : ''}`}
+              alt="React logo"
+              onMouseDown={handleLogoClick}
+            />
+            <h1>{count}</h1>
+            <h4>{clicksPerSecond.toFixed(2)} Clics par seconde</h4>
+          </div>
+        </div>
+        <div className='upgrade-container'>
+          <h1>Amélioration</h1>
+        </div>
       </div>
-      <h1>Vite + React</h1>
-      <div className="card">
-        <button onClick={() => setCount((count) => count + 1)}>
-          count is {count}
-        </button>
-        <p>
-          Edit <code>src/App.tsx</code> and save to test HMR
-        </p>
-      </div>
-      <p className="read-the-docs">
-        Click on the Vite and React logos to learn more
-      </p>
     </>
   )
 }
