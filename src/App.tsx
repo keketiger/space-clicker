@@ -1,64 +1,73 @@
-import { useEffect, useRef, useState } from 'react'
-import reactLogo from './assets/react.svg'
-import './App.css'
+import { useEffect, useState } from 'react';
+import './App.css';
+import useCPS from './hooks/useCPS';
+import StarLogo from './components/StarLogo';
+import UpgradePanel from './components/UpgradePanel';
 
-function App() {
-  const [count, setCount] = useState(0)
-  const [isShrinking, setIsShrinking] = useState(false)
-  const [clicksPerSecond, setClicksPerSecond] = useState(0)
-  const clickCountRef = useRef(0)
-  const lastCLickTimeRef = useRef(Date.now())
-
-  useEffect(() => {
-    const calculateClicksPerSecond = () => {
-      const now = Date.now()
-      const timeElapsed = (now - lastCLickTimeRef.current) / 1000
-
-      if (timeElapsed > 0) {
-        setClicksPerSecond(clickCountRef.current / timeElapsed)
-      }
-
-      lastCLickTimeRef.current = now
-      clickCountRef.current = 0
-    }
-
-    const interval = setInterval(calculateClicksPerSecond, 1000)
-
-    return () => clearInterval(interval);
-  }, [])
-
-  const handleLogoClick = () => {
-    const now = Date.now()
-    clickCountRef.current += 1
-    setCount((count) => count + 1)
-    setIsShrinking(true)
-
-    setTimeout(() => {
-      setIsShrinking(false)
-    }, 150)
-  }
-
-  return (
-    <>
-      <div className='container'>
-        <div className='space-container'>
-          <div className='space-clicker-render'>
-            <img
-              src={reactLogo}
-              className={`logo react ${isShrinking ? 'shrink' : ''}`}
-              alt="React logo"
-              onMouseDown={handleLogoClick}
-            />
-            <h1>{count}</h1>
-            <h4>{clicksPerSecond.toFixed(2)} Clics par seconde</h4>
-          </div>
-        </div>
-        <div className='upgrade-container'>
-          <h1>Amélioration</h1>
-        </div>
-      </div>
-    </>
-  )
+interface SaveData {
+  stars?: number;
+  autoClickLevel?: number;
+  clickPowerLevel?: number;
 }
 
-export default App
+function App() {
+  const loadSave = (): SaveData => {
+    try {
+      const saved = localStorage.getItem('savegame');
+      if (!saved) return {};
+      return JSON.parse(saved);
+    } catch {
+      return {};
+    }
+  };
+
+  const [stars, setStars] = useState(() => loadSave().stars || 0);
+  const [autoClickLevel, setAutoClickLevel] = useState(() => loadSave().autoClickLevel || 0);
+  const [clickPowerLevel, setClickPowerLevel] = useState(() => loadSave().clickPowerLevel || 0);
+
+  const { cps, registerClick } = useCPS();
+
+  const handleStarClick = () => {
+    const clickValue = 1 + clickPowerLevel;
+    setStars(prev => prev + clickValue);
+    registerClick();
+  };
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setStars(prev => prev + autoClickLevel);
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [autoClickLevel]);
+
+  useEffect(() => {
+    const save = {
+      stars,
+      autoClickLevel,
+      clickPowerLevel
+    };
+    localStorage.setItem('savegame', JSON.stringify(save));
+  }, [stars, autoClickLevel, clickPowerLevel]);
+
+  return (
+    <div className='container'>
+      <div className="space-container">
+        <div className="space-clicker-render no-select">
+          <StarLogo onClick={handleStarClick} />
+          <h1>{stars} ✦</h1>
+          <h4>{(cps + autoClickLevel).toFixed(2)} clics/sec</h4>
+        </div>
+      </div>
+      <UpgradePanel
+        stars={stars}
+        setStars={setStars}
+        autoClickLevel={autoClickLevel}
+        setAutoClickLevel={setAutoClickLevel}
+        clickPowerLevel={clickPowerLevel}
+        setClickPowerLevel={setClickPowerLevel}
+      />
+    </div>
+  );
+}
+
+export default App;
